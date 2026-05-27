@@ -19,12 +19,6 @@ jobs:
       - name: Prepare encrypt key file
         run: touch encryptKeyWith
 
-      - name: Ensure SDL_FontCache sources are regular files
-        run: |
-          git submodule update --init --recursive SDL_FontCache
-          cp -f SDL_FontCache/SDL_FontCache.c src/SDL_FontCache.c
-          cp -f SDL_FontCache/SDL_FontCache.h include/SDL_FontCache.h
-
       - name: Build docker image
         run: docker build . -t builder
 

@@ -56,7 +56,13 @@ python build.py
 
 ### 若 checkout 报 symlink / File name too long
 
-旧仓库里 `src/SDL_FontCache.c` 曾被误存为**符号链接**（链接目标是一整份源码），Linux CI 会失败。  
-已改为普通文件（`100644`）；请一并提交 `src/SDL_FontCache.c`、`include/SDL_FontCache.h` 的 git 变更后再跑 Actions。
+旧仓库里 `src/SDL_FontCache.c` 曾被误存为**符号链接**。  
+已改为普通文件（`100644`），且内含**已打补丁**版本（`#include "SDL2/SDL.h"`）。  
+**不要**在 CI 里从 `SDL_FontCache/` 子模块复制覆盖——子模块是未补丁源码，会导致 `SDL.h: No such file or directory`。
 
-当前 workflow **已去掉 clang-format 检查**（中文 fork 无需格式门禁，避免子模块/checkout 问题）。
+请确认已提交并 push：
+- `src/SDL_FontCache.c`
+- `include/SDL_FontCache.h`  
+（模式为普通文件，头文件含 `SDL2/SDL.h`）
+
+当前 workflow **已去掉 clang-format** 和错误的 FontCache 复制步骤。

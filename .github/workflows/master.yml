@@ -29,12 +29,6 @@ jobs:
             echo "(no ENC_KEY secret)" > encryptKeyWith
           fi
 
-      - name: Ensure SDL_FontCache sources are regular files
-        run: |
-          git submodule update --init --recursive SDL_FontCache
-          cp -f SDL_FontCache/SDL_FontCache.c src/SDL_FontCache.c
-          cp -f SDL_FontCache/SDL_FontCache.h include/SDL_FontCache.h
-
       - name: Docker caching
         uses: ScribeMD/docker-cache@0.5.0
         id: cache
