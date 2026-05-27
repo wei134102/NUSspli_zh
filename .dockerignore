@@ -1,0 +1,12 @@
+.git
+.github
+debug
+release
+out
+zips
+*.elf
+*.rpx
+*.wuhb
+encryptKeyWith
+NUSPacker.jar
+version.txt
