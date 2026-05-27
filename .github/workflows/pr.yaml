@@ -1,5 +1,4 @@
-# 轻量手动编译（跳过 clang-format，仅 DEBUG 产物）
-# 适合改完中文语言包后快速验证能否编过。
+# 快速手动编译（与 build 相同，保留别名便于 Actions 列表识别）
 
 name: build-quick
 
@@ -8,22 +7,23 @@ on:
 
 jobs:
   build-binary:
-    name: Quick build (DEBUG only)
+    name: Quick build
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           fetch-depth: 1
 
       - name: Prepare encrypt key file
+        run: touch encryptKeyWith
+
+      - name: Ensure SDL_FontCache sources are regular files
         run: |
-          if [ -n "${{ secrets.ENC_KEY }}" ]; then
-            printf '%s' "${{ secrets.ENC_KEY }}" > encryptKeyWith
-          else
-            touch encryptKeyWith
-          fi
+          git submodule update --init --recursive SDL_FontCache
+          cp -f SDL_FontCache/SDL_FontCache.c src/SDL_FontCache.c
+          cp -f SDL_FontCache/SDL_FontCache.h include/SDL_FontCache.h
 
       - name: Build docker image
         run: docker build . -t builder
@@ -35,18 +35,11 @@ jobs:
           VERSION="$(grep '^version=' version.txt | cut -d= -f2)"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload Aroma DEBUG (.wuhb)
+      - name: Upload Aroma DEBUG
         uses: actions/upload-artifact@v4
         with:
           name: NUSspli-${{ steps.build.outputs.version }}-Aroma-DEBUG
           path: out/Aroma-DEBUG/*
-          if-no-files-found: error
-
-      - name: Upload Channel DEBUG
-        uses: actions/upload-artifact@v4
-        with:
-          name: NUSspli-${{ steps.build.outputs.version }}-Channel-DEBUG
-          path: out/Channel-DEBUG/*
           if-no-files-found: error
 
       - name: Upload all zips

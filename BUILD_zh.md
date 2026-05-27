@@ -53,3 +53,10 @@ python build.py
    - `NUSspli-*-Aroma-DEBUG` 内有 **NUSspli.wuhb** → 拷到 `sd:/wiiu/apps/`
 
 可选：在仓库 Settings → Secrets 添加 `ENC_KEY`（与原项目加密构建一致；没有也能编，可能用空密钥文件）。
+
+### 若 checkout 报 symlink / File name too long
+
+旧仓库里 `src/SDL_FontCache.c` 曾被误存为**符号链接**（链接目标是一整份源码），Linux CI 会失败。  
+已改为普通文件（`100644`）；请一并提交 `src/SDL_FontCache.c`、`include/SDL_FontCache.h` 的 git 变更后再跑 Actions。
+
+当前 workflow **已去掉 clang-format 检查**（中文 fork 无需格式门禁，避免子模块/checkout 问题）。
