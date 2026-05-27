@@ -1,96 +1,142 @@
+# 手动编译 NUSspli（推荐在 GitHub 网页 Actions 页点击 Run workflow）
+# 使用与本地相同的 Dockerfile + build.py，在 ubuntu 上通过 Docker 构建。
+
 name: build
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      skip_clang_format:
+        description: 跳过 clang-format 检查
+        type: boolean
+        default: false
+      publish_github_release:
+        description: 创建 GitHub Release 并上传 zips（需版本号非 ALPHA/BETA）
+        type: boolean
+        default: false
 
 jobs:
   clang-format:
+    if: ${{ inputs.skip_clang_format != true }}
     runs-on: ubuntu-24.04
     steps:
-      - name: checkout
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 1
       - name: clang-format
         run: |
-          git submodule update --init --recursive
-          docker run --rm -v ${PWD}:/src wiiuenv/clang-format:13.0.0-2 -e ./src/gtitles.c -e ./src/SDL_FontCache.c -e ./include/SDL_FontCache.h -r ./src ./include
+          docker run --rm -v ${PWD}:/src wiiuenv/clang-format:13.0.0-2 \
+            -e ./src/gtitles.c -e ./src/SDL_FontCache.c -e ./include/SDL_FontCache.h \
+            -r ./src ./include
+
   build-binary:
     name: Build binary
     runs-on: ubuntu-24.04
     needs: clang-format
+    if: ${{ always() && (needs.clang-format.result == 'success' || needs.clang-format.result == 'skipped') }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 0
+
+      - name: Prepare encrypt key file
+        run: |
+          if [ -n "${{ secrets.ENC_KEY }}" ]; then
+            printf '%s' "${{ secrets.ENC_KEY }}" > encryptKeyWith
+          else
+            echo "(no ENC_KEY secret, using empty encryptKeyWith)" > encryptKeyWith
+          fi
+
       - name: Docker caching
         uses: ScribeMD/docker-cache@0.5.0
         id: cache
         continue-on-error: true
         with:
           key: nusspli-docker-cache-${{ hashFiles('Dockerfile') }}
+
       - name: Build docker image
         if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          docker build . -t builder
+        run: docker build . -t builder
+
       - name: Build artifacts
+        id: build
         run: |
-          echo ${{ secrets.ENC_KEY }} > encryptKeyWith
-          docker run --rm -v ${PWD}:/project builder python3 build.py
-          cat version.txt >> $GITHUB_OUTPUT
-        id: version
-      - name: Upload Aroma version
-        if: ${{ startsWith(github.event.head_commit.message, 'v') && contains(github.event.head_commit.message, '.') && !endsWith(github.event.head_commit.message, '.') && (contains(github.event.head_commit.message, '-ALPHA') || contains(github.event.head_commit.message, '-BETA')) }}
-        uses: actions/upload-artifact@v6
+          docker run --rm -v "${PWD}:/project" builder python3 build.py
+          VERSION="$(grep '^version=' version.txt | cut -d= -f2)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Built version: ${VERSION}"
+
+      - name: Upload Aroma DEBUG
+        uses: actions/upload-artifact@v4
         with:
-          name: NUSspli-${{ steps.version.outputs.version }}-Aroma
-          path: out/Aroma/*
-          if-no-files-found: warn
-      - name: Upload Aroma debug version
-        if: ${{ startsWith(github.event.head_commit.message, 'v') && contains(github.event.head_commit.message, '.') && !endsWith(github.event.head_commit.message, '.') && (contains(github.event.head_commit.message, '-ALPHA') || contains(github.event.head_commit.message, '-BETA')) }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: NUSspli-${{ steps.version.outputs.version }}-Aroma-DEBUG
+          name: NUSspli-${{ steps.build.outputs.version }}-Aroma-DEBUG
           path: out/Aroma-DEBUG/*
           if-no-files-found: error
-      - name: Upload Channel version
-        if: ${{ startsWith(github.event.head_commit.message, 'v') && contains(github.event.head_commit.message, '.') && !endsWith(github.event.head_commit.message, '.') && (contains(github.event.head_commit.message, '-ALPHA') || contains(github.event.head_commit.message, '-BETA')) }}
-        uses: actions/upload-artifact@v6
+
+      - name: Upload Channel DEBUG
+        uses: actions/upload-artifact@v4
         with:
-          name: NUSspli-${{ steps.version.outputs.version }}-Channel
-          path: out/Channel/*
-          if-no-files-found: warn
-      - name: Upload Channel debug version
-        if: ${{ startsWith(github.event.head_commit.message, 'v') && contains(github.event.head_commit.message, '.') && !endsWith(github.event.head_commit.message, '.') && (contains(github.event.head_commit.message, '-ALPHA') || contains(github.event.head_commit.message, '-BETA')) }}
-        uses: actions/upload-artifact@v6
-        with:
-          name: NUSspli-${{ steps.version.outputs.version }}-Channel-DEBUG
+          name: NUSspli-${{ steps.build.outputs.version }}-Channel-DEBUG
           path: out/Channel-DEBUG/*
           if-no-files-found: error
+
+      - name: Upload zips (Aroma DEBUG)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zips-Aroma-DEBUG
+          path: zips/*Aroma-DEBUG.zip
+          if-no-files-found: warn
+
+      - name: Upload zips (Channel DEBUG)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zips-Channel-DEBUG
+          path: zips/*Channel-DEBUG.zip
+          if-no-files-found: warn
+
+      - name: Upload zips (Release Aroma)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zips-Aroma-release
+          path: zips/*-Aroma.zip
+          if-no-files-found: ignore
+
+      - name: Upload zips (Release Channel)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zips-Channel-release
+          path: zips/*-Channel.zip
+          if-no-files-found: ignore
+
       - name: Get previous tag
-        run: echo "previous_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> $GITHUB_ENV
+        if: inputs.publish_github_release == true
+        run: echo "previous_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> "$GITHUB_ENV"
+
       - name: Generate changelog
         id: changelog
+        if: inputs.publish_github_release == true && env.previous_tag != ''
         uses: jaywcjlove/changelog-generator@main
-        if: ${{ env.previous_tag && startsWith(github.event.head_commit.message, 'v') && contains(github.event.head_commit.message, '.') && !endsWith(github.event.head_commit.message, '.') && !contains(github.event.head_commit.message, '-ALPHA') && !contains(github.event.head_commit.message, '-BETA') }}
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           filter: 'v\d+\.\d+(-ALPHA|-BETA)?'
-      - name: Publish release
-        if: ${{ startsWith(github.event.head_commit.message, 'v') && contains(github.event.head_commit.message, '.') && !endsWith(github.event.head_commit.message, '.') && !contains(github.event.head_commit.message, '-ALPHA') && !contains(github.event.head_commit.message, '-BETA') }}
+
+      - name: Publish GitHub Release
+        if: inputs.publish_github_release == true
         uses: ncipollo/release-action@v1
         with:
-          tag: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
+          tag: v${{ steps.build.outputs.version }}
+          name: v${{ steps.build.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifactErrorsFailBuild: true
+          allowUpdates: true
+          artifactErrorsFailBuild: false
           artifactContentType: application/zip
-          body: ${{ steps.changelog.outputs.changelog }}
+          body: ${{ steps.changelog.outputs.changelog || format('Manual build {0}', steps.build.outputs.version) }}
           artifacts: |
-            zips/NUSspli-${{ steps.version.outputs.version }}-Aroma.zip
-            zips/NUSspli-${{ steps.version.outputs.version }}-Aroma-DEBUG.zip
-            zips/NUSspli-${{ steps.version.outputs.version }}-Channel.zip
-            zips/NUSspli-${{ steps.version.outputs.version }}-Channel-DEBUG.zip
+            zips/NUSspli-${{ steps.build.outputs.version }}-Aroma.zip
+            zips/NUSspli-${{ steps.build.outputs.version }}-Aroma-DEBUG.zip
+            zips/NUSspli-${{ steps.build.outputs.version }}-Channel.zip
+            zips/NUSspli-${{ steps.build.outputs.version }}-Channel-DEBUG.zip

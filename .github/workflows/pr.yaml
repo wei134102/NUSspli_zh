@@ -1,43 +1,57 @@
-name: build PRs
+# 轻量手动编译（跳过 clang-format，仅 DEBUG 产物）
+# 适合改完中文语言包后快速验证能否编过。
+
+name: build-quick
 
 on:
-  pull_request:
-    types: [ opened, reopened, synchronize ]
+  workflow_dispatch:
 
 jobs:
-  clang-format:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-      - name: clang-format
-        run: |
-          git submodule update --init --recursive
-          docker run --rm -v ${PWD}:/src wiiuenv/clang-format:13.0.0-2 -e ./src/gtitles.c -e ./src/SDL_FontCache.c -e ./include/SDL_FontCache.h -r ./src ./include
   build-binary:
-    name: build-binary
+    name: Quick build (DEBUG only)
     runs-on: ubuntu-24.04
-    needs: clang-format
     steps:
-      - name: checkout
-        uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
           fetch-depth: 1
-      - name: build artifacts
+
+      - name: Prepare encrypt key file
         run: |
-          docker build . -t builder
-          docker run --rm -v ${PWD}:/project builder python3 build.py
-      - name: Upload Aroma version
-        uses: actions/upload-artifact@v6
+          if [ -n "${{ secrets.ENC_KEY }}" ]; then
+            printf '%s' "${{ secrets.ENC_KEY }}" > encryptKeyWith
+          else
+            touch encryptKeyWith
+          fi
+
+      - name: Build docker image
+        run: docker build . -t builder
+
+      - name: Build artifacts
+        id: build
+        run: |
+          docker run --rm -v "${PWD}:/project" builder python3 build.py
+          VERSION="$(grep '^version=' version.txt | cut -d= -f2)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Aroma DEBUG (.wuhb)
+        uses: actions/upload-artifact@v4
         with:
-          name: NUSspli-Aroma-DEBUG
+          name: NUSspli-${{ steps.build.outputs.version }}-Aroma-DEBUG
           path: out/Aroma-DEBUG/*
           if-no-files-found: error
-      - name: Upload Channel version
-        uses: actions/upload-artifact@v6
+
+      - name: Upload Channel DEBUG
+        uses: actions/upload-artifact@v4
         with:
-          name: NUSspli-Channel-DEBUG
+          name: NUSspli-${{ steps.build.outputs.version }}-Channel-DEBUG
           path: out/Channel-DEBUG/*
           if-no-files-found: error
+
+      - name: Upload all zips
+        uses: actions/upload-artifact@v4
+        with:
+          name: NUSspli-zips-${{ steps.build.outputs.version }}
+          path: zips/*.zip
+          if-no-files-found: warn

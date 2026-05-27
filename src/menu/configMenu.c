@@ -110,6 +110,12 @@ static inline void switchMenuLanguage()
                 lang = Swkbd_LanguageType__German;
                 break;
             case Swkbd_LanguageType__German:
+                lang = Swkbd_LanguageType__Chinese2;
+                break;
+            case Swkbd_LanguageType__Chinese2:
+                lang = Swkbd_LanguageType__Chinese1;
+                break;
+            case Swkbd_LanguageType__Chinese1:
                 lang = Swkbd_LanguageType__English;
                 break;
             default:
@@ -125,6 +131,12 @@ static inline void switchMenuLanguage()
                 lang = Swkbd_LanguageType__English;
                 break;
             case Swkbd_LanguageType__English:
+                lang = Swkbd_LanguageType__Chinese1;
+                break;
+            case Swkbd_LanguageType__Chinese1:
+                lang = Swkbd_LanguageType__Chinese2;
+                break;
+            case Swkbd_LanguageType__Chinese2:
                 lang = Swkbd_LanguageType__German;
                 break;
             case Swkbd_LanguageType__German:

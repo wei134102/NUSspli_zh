@@ -1,6 +1,25 @@
-#!/bin/env python
+#!/usr/bin/env python3
+"""Build NUSspli (Linux/Docker only). On Windows run: build.bat"""
 
+import sys
 import os
+
+if sys.platform == "win32":
+    print("=" * 60)
+    print("NUSspli 无法在 Windows 下直接编译（需要 make、devkitPPC、bash）。")
+    print("请使用以下方式之一：")
+    print()
+    print("【推荐】安装 Docker Desktop 后在本目录执行：")
+    print("  docker build -t nussplibuilder .")
+    print('  docker run --rm -v "%CD%:/project" nussplibuilder python3 build.py')
+    print()
+    print("或安装 WSL2 + Ubuntu，在 WSL 内克隆本仓库后执行：")
+    print("  python3 build.py")
+    print()
+    print("也可双击运行 build.bat 查看说明。")
+    print("=" * 60)
+    sys.exit(2)
+
 import pycurl
 import shutil
 import subprocess

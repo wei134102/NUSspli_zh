@@ -76,9 +76,9 @@
 static bool changed = false;
 static bool checkForUpdates = true;
 static bool autoResume = true;
-static Swkbd_LanguageType lang = Swkbd_LanguageType__Invalid;
+static Swkbd_LanguageType lang = Swkbd_LanguageType__Chinese1;
 static Swkbd_LanguageType sysLang;
-static Swkbd_LanguageType menuLang = Swkbd_LanguageType__English;
+static Swkbd_LanguageType menuLang = Swkbd_LanguageType__Chinese1;
 static bool dlToUSB = true;
 static MCPRegion regionSetting = MCP_REGION_EUROPE | MCP_REGION_USA | MCP_REGION_JAPAN;
 static NOTIF_METHOD notifSetting = NOTIF_METHOD_RUMBLE | NOTIF_METHOD_LED;
@@ -166,7 +166,8 @@ void initConfig()
         sysLang = Swkbd_LanguageType__English;
     }
 
-    menuLang = Swkbd_LanguageType__Invalid;
+    menuLang = Swkbd_LanguageType__Chinese1;
+    lang = Swkbd_LanguageType__Chinese1;
 
     if(!fileExists(CONFIG_PATH))
     {
