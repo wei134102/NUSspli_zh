@@ -1023,15 +1023,6 @@ Uint8 FC_SetGlyphCacheLevel(FC_Font* font, int cache_level, FC_Image* cache_text
         // Grow cache?
         if(font->glyph_cache_count > font->glyph_cache_size)
         {
-            // Copy old cache to new one
-            int i;
-            FC_Image** new_cache;
-            new_cache = (FC_Image**)malloc(font->glyph_cache_count * sizeof(FC_Image*));
-            for(i = 0; i < font->glyph_cache_size; ++i)
-                new_cache[i] = font->glyph_cache[i];
-
-            // Save new cache
-            free(font->glyph_cache);
             font->glyph_cache_size = font->glyph_cache_count;
             font->glyph_cache = realloc(font->glyph_cache, font->glyph_cache_count * sizeof(FC_Image*));
         }
@@ -2656,8 +2647,6 @@ FC_Rect FC_GetBounds(FC_Font* font, float x, float y, FC_AlignEnum align, FC_Sca
         default:
             break;
     }
-
-    free(temp);
 
     return result;
 }

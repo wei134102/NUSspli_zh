@@ -387,12 +387,11 @@ loop:
         {
             char oldSearch[sizeof(search)];
             strcpy(oldSearch, search);
-            showKeyboard(KEYBOARD_LAYOUT_NORMAL, KEYBOARD_TYPE_NORMAL, search, CHECK_NONE, 128, false, search, localise("Search"));
+            showKeyboard(KEYBOARD_LAYOUT_NORMAL, KEYBOARD_TYPE_NORMAL, search, CHECK_NONE, 128, false, search, NULL);
             if(strcmp(oldSearch, search) != 0)
-            {
                 cursor = pos = 0;
-                redraw = true;
-            }
+
+            redraw = true;
         }
 
         if(vpad.trigger & VPAD_BUTTON_R || vpad.trigger & VPAD_BUTTON_ZR || vpad.trigger & VPAD_BUTTON_PLUS)

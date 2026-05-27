@@ -54,15 +54,26 @@ python build.py
 
 可选：在仓库 Settings → Secrets 添加 `ENC_KEY`（与原项目加密构建一致；没有也能编，可能用空密钥文件）。
 
+### 搜索界面「重影」/ 与官方版表现不一致
+
+**不是汉化翻译问题。** 官方版与汉化版菜单代码相同；差异来自 **编译时链入了错误的 SDL_FontCache（未打补丁的字体渲染库）**。
+
+| 版本 | FontCache |
+|------|-----------|
+| 官方发布包 | 子模块打补丁后编译（`SDL_RenderCopy` 简化路径） |
+| 此前汉化 CI 包 | 曾用**未补丁**子模块覆盖 `src/`，文字叠影、搜索后残影 |
+
+**已修复（需重新跑 Actions 编译）：**
+
+1. `Makefile`：先对子模块打补丁（失败即中止），再同步到 `src/` / `include/`
+2. `SDL_FontCache-patches/*.patch`：统一为 LF，避免 Linux 上 `git apply` 静默失败
+3. 搜索键盘关闭后**强制重绘**菜单，清除系统键盘残影
+
+请用 **commit 包含上述修复之后** 的 workflow 重新构建，不要用旧 artifact。
+
 ### 若 checkout 报 symlink / File name too long
 
-旧仓库里 `src/SDL_FontCache.c` 曾被误存为**符号链接**。  
-已改为普通文件（`100644`），且内含**已打补丁**版本（`#include "SDL2/SDL.h"`）。  
-**不要**在 CI 里从 `SDL_FontCache/` 子模块复制覆盖——子模块是未补丁源码，会导致 `SDL.h: No such file or directory`。
+旧仓库里 `src/SDL_FontCache.c` 曾被误存为**符号链接**，已改为普通文件（`100644`）。  
+构建时以 **Makefile 打补丁并同步** 的结果为准，不要手动从子模块复制未补丁源码。
 
-请确认已提交并 push：
-- `src/SDL_FontCache.c`
-- `include/SDL_FontCache.h`  
-（模式为普通文件，头文件含 `SDL2/SDL.h`）
-
-当前 workflow **已去掉 clang-format** 和错误的 FontCache 复制步骤。
+当前 workflow **已去掉 clang-format** 和错误的「复制未补丁 FontCache」步骤。
